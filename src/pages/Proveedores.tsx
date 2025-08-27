@@ -26,7 +26,7 @@ const Proveedores: React.FC = () => {
   const fetchProveedores = async () => {
     try {
       const response = await proveedoresApi.getAll();
-      setProveedores(response.data.filter(proveedor => !proveedor.eliminado));
+      setProveedores(response.data.filter(p => !p.eliminado));
     } catch (error) {
       console.error('Error fetching proveedores:', error);
     } finally {
@@ -36,13 +36,23 @@ const Proveedores: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
     try {
+      const proveedorPayload: Proveedor = {
+        id_proveedor: editingProveedor?.id_proveedor ?? 0,
+        nombre: formData.nombre,
+        direccion: formData.direccion,
+        telefono: formData.telefono,
+        email: formData.email,
+        eliminado: editingProveedor?.eliminado ?? false,
+      };
+
       if (editingProveedor) {
-        await proveedoresApi.update(editingProveedor.id_proveedor, formData);
+        await proveedoresApi.update(editingProveedor.id_proveedor, proveedorPayload);
       } else {
-        await proveedoresApi.create({ ...formData, eliminado: false });
+        await proveedoresApi.create(proveedorPayload);
       }
-      
+
       fetchProveedores();
       closeModal();
     } catch (error) {
@@ -53,7 +63,12 @@ const Proveedores: React.FC = () => {
   const handleDelete = async (id: number) => {
     if (window.confirm('¿Está seguro de eliminar este proveedor?')) {
       try {
-        await proveedoresApi.delete(id);
+        const proveedor = proveedores.find(p => p.id_proveedor === id);
+        if (!proveedor) return;
+
+        // Soft delete: solo cambiamos eliminado a true
+        await proveedoresApi.update(id, { ...proveedor, eliminado: true });
+
         fetchProveedores();
       } catch (error) {
         console.error('Error deleting proveedor:', error);
