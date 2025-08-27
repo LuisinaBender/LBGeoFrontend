@@ -35,6 +35,7 @@ const Repuestos: React.FC = () => {
   }, []);
 
   const fetchData = async () => {
+    setLoading(true);
     try {
       const [repuestosRes, proveedoresRes, equivalenciasRes] = await Promise.all([
         repuestosApi.getAll(),
@@ -53,42 +54,47 @@ const Repuestos: React.FC = () => {
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
+    e.preventDefault();
+    try {
+      const payload = {
+        marca_auto: formData.marca_auto,
+        modelo_auto: formData.modelo_auto,
+        codigo_OEM_original: formData.codigo_OEM_original,
+        marca_OEM: formData.marca_OEM,
+        anio: Number(formData.anio),
+        motor: formData.motor,
+        precio: Number(formData.precio),
+        id_proveedor: Number(formData.id_proveedor),
+        id_equivalencia: formData.id_equivalencia ? Number(formData.id_equivalencia) : null,
+        imagen_url: formData.imagen_url || null,
+        texto: formData.texto || null,
+        eliminado: false,
+      };
 
-  try {
-    const payload = {
-      marca_auto: formData.marca_auto,
-      modelo_auto: formData.modelo_auto,
-      codigo_OEM_original: formData.codigo_OEM_original,
-      marca_OEM: formData.marca_OEM,
-      anio: Number(formData.anio),
-      motor: formData.motor,
-      precio: Number(formData.precio),
-      id_proveedor: Number(formData.id_proveedor),
-      id_equivalencia: formData.id_equivalencia ? Number(formData.id_equivalencia) : null,
-      imagen_url: formData.imagen_url || null,
-      texto: formData.texto || null,
-      eliminado: false, // solo si tu API lo permite al crear
-    };
-
-    if (editingRepuesto) {
-      await repuestosApi.update(editingRepuesto.id_repuesto, payload);
-    } else {
+      if (editingRepuesto) {
+        await repuestosApi.update(editingRepuesto.id_repuesto, payload);
+      } else {
+        await repuestosApi.create(payload);
+      }
+      console.log("Payload a enviar:", payload);
       await repuestosApi.create(payload);
-    }
 
-    fetchData();
-    closeModal();
-  } catch (error) {
-    console.error('Error saving repuesto:', error);
-    alert('No se pudo guardar el repuesto. Verifica los campos y vuelve a intentar.');
-  }
-};
+
+      fetchData();
+      closeModal();
+    } catch (error) {
+      console.error('Error saving repuesto:', error);
+      alert('No se pudo guardar el repuesto. Verifica los campos y vuelve a intentar.');
+    }
+  };
 
   const handleDelete = async (id: number) => {
     if (window.confirm('¿Está seguro de eliminar este repuesto?')) {
       try {
-        await repuestosApi.delete(id);
+        const repuesto = repuestos.find(r => r.id_repuesto === id);
+        if (!repuesto) return;
+
+        await repuestosApi.update(id, { ...repuesto, eliminado: true });
         fetchData();
       } catch (error) {
         console.error('Error deleting repuesto:', error);
@@ -250,6 +256,7 @@ const Repuestos: React.FC = () => {
       {/* Modal Crear/Editar */}
       <Modal isOpen={isModalOpen} onClose={closeModal} title={editingRepuesto ? 'Editar Repuesto' : 'Nuevo Repuesto'} maxWidth="max-w-2xl">
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Inputs */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <input type="text" placeholder="Marca Auto" required value={formData.marca_auto} onChange={e => setFormData({ ...formData, marca_auto: e.target.value })} className="border p-2 rounded w-full" />
             <input type="text" placeholder="Modelo Auto" required value={formData.modelo_auto} onChange={e => setFormData({ ...formData, modelo_auto: e.target.value })} className="border p-2 rounded w-full" />
@@ -286,7 +293,7 @@ const Repuestos: React.FC = () => {
       <Modal isOpen={isViewModalOpen} onClose={closeViewModal} title="Detalles del Repuesto" maxWidth="max-w-2xl">
         {viewingRepuesto && (
           <div className="space-y-4">
-            <img src={viewingRepuesto.imagen_url} alt={`${viewingRepuesto.marca_auto} ${viewingRepuesto.modelo_auto}`} className="w-full h-64 object-cover rounded" />
+            {viewingRepuesto.imagen_url && <img src={viewingRepuesto.imagen_url} alt={`${viewingRepuesto.marca_auto} ${viewingRepuesto.modelo_auto}`} className="w-full h-64 object-cover rounded" />}
             <div>Año: {viewingRepuesto.anio}</div>
             <div>Motor: {viewingRepuesto.motor}</div>
             <div>Código OEM: {viewingRepuesto.codigo_OEM_original}</div>
