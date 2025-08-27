@@ -59,11 +59,11 @@ export const usuariosApi = {
 
 // Registros de Venta API
 export const registrosVentaApi = {
-  getAll: () => api.get<RegistroVenta[]>('/registros-venta'),
-  getById: (id: number) => api.get<RegistroVenta>(`/registros-venta/${id}`),
-  create: (registro: Omit<RegistroVenta, 'id_registro_venta'>) => api.post<RegistroVenta>('/registros-venta', registro),
-  update: (id: number, registro: Partial<RegistroVenta>) => api.put<RegistroVenta>(`/registros-venta/${id}`, registro),
-  delete: (id: number) => api.delete(`/registros-venta/${id}`),
+  getAll: () => api.get<RegistroVenta[]>('/registrosventas'),
+  getById: (id: number) => api.get<RegistroVenta>(`/registrosventas/${id}`),
+  create: (registro: Omit<RegistroVenta, 'id_registro_venta'>) => api.post<RegistroVenta>('/registrosventas', registro),
+  update: (id: number, registro: Partial<RegistroVenta>) => api.put<RegistroVenta>(`/registrosventas/${id}`, registro),
+  delete: (id: number) => api.delete(`/registrosventas/${id}`),
 };
 
 // Registros API

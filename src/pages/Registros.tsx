@@ -44,29 +44,35 @@ const Registros: React.FC = () => {
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      const precio_total = formData.cantidad * formData.precio_unitario;
-      const data = {
-        ...formData,
-        id_registro_venta: Number(formData.id_registro_venta),
-        id_repuesto: Number(formData.id_repuesto),
-        precio_total,
-        eliminado: false,
-      };
+  e.preventDefault();
+  try {
+    const data = {
+      texto: formData.texto,
+      marca_auto: formData.marca_auto,
+      modelo_auto: formData.modelo_auto,
+      codigo_OEM_Original: formData.codigo_OEM_Original,
+      marca_OEM: formData.marca_OEM,
+      anio: Number(formData.anio),
+      motor: formData.motor,
+      imagen_url: formData.imagen_url,
+      id_proveedor: Number(formData.id_proveedor),
+      id_equivalencia: Number(formData.id_equivalencia),
+      precio: Number(formData.precio),
+      eliminado: false, // nuevo repuesto siempre false
+    };
 
-      if (editingRegistro) {
-        await registrosApi.update(editingRegistro.id_registro, { ...editingRegistro, ...data });
-      } else {
-        await registrosApi.create(data);
-      }
-
-      fetchData();
-      closeModal();
-    } catch (error) {
-      console.error('Error saving registro:', error);
+    if (editingRepuesto) {
+      await repuestosApi.update(editingRepuesto.id_repuesto, data);
+    } else {
+      await repuestosApi.create(data);
     }
-  };
+
+    fetchData();
+    closeModal();
+  } catch (error) {
+    console.error('Error saving repuesto:', error);
+  }
+};
 
   const handleDeleteRegistro = async (id: number) => {
     if (window.confirm('¿Está seguro de eliminar este registro?')) {
