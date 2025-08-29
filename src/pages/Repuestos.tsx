@@ -24,7 +24,7 @@ const Repuestos: React.FC = () => {
     anio: new Date().getFullYear(),
     motor: '',
     id_proveedor: 0,
-    id_equivalencia: null as number | null,
+    id_equivalencia: 0,
     precio: 0,
     imagen_url: '',
     texto: '',
@@ -48,67 +48,57 @@ const Repuestos: React.FC = () => {
       setEquivalencias(equivalenciasRes.data.filter(e => !e.eliminado));
     } catch (error) {
       console.error('Error fetching data:', error);
+      alert('Error al cargar los datos. Verifica la conexión con el servidor.');
     } finally {
       setLoading(false);
     }
   };
 
-  /** 🔄 Mapea el formulario (snake_case) al DTO esperado por el backend (PascalCase) y omite opcionales vacíos */
-  const toBackendPayload = (fd: typeof formData): any => {
-    const base: any = {
-      MarcaAuto: fd.marca_auto,
-      ModeloAuto: fd.modelo_auto,
-      CodigoOEMOriginal: fd.codigo_OEM_original,
-      MarcaOEM: fd.marca_OEM,
-      Anio: Number(fd.anio),
-      Motor: fd.motor,
-      Precio: Number(fd.precio),
-      IdProveedor: Number(fd.id_proveedor),
-      Eliminado: false,
-    };
+const handleSubmit = async (event: React.FormEvent) => {
 
-    if (fd.id_equivalencia !== null && fd.id_equivalencia !== undefined) {
-      base.IdEquivalencia = Number(fd.id_equivalencia);
-    }
-    if (fd.imagen_url && fd.imagen_url.trim() !== '') {
-      base.ImagenUrl = fd.imagen_url.trim();
-    }
-    if (fd.texto && fd.texto.trim() !== '') {
-      base.Texto = fd.texto.trim();
-    }
+  event.preventDefault();
 
-    return base;
+  // Validación: proveedor obligatorio, equivalencia opcional
+  if (!formData.id_proveedor || Number(formData.id_proveedor) === 0) {
+    alert('Debe seleccionar un proveedor.');
+    return;
+  }
+
+
+  // Equivalencia: siempre enviar un número (0 si no se selecciona ninguna)
+  const equivalenciaValue = formData.id_equivalencia && Number(formData.id_equivalencia) !== 0
+    ? Number(formData.id_equivalencia)
+    : 0;
+
+  const payload = {
+    marca_auto: formData.marca_auto.trim(),
+    modelo_auto: formData.modelo_auto.trim(),
+    codigo_OEM_original: formData.codigo_OEM_original.trim(),
+    marca_OEM: formData.marca_OEM.trim(),
+    anio: Number(formData.anio),
+    motor: formData.motor.trim(),
+    precio: Number(formData.precio),
+    id_proveedor: Number(formData.id_proveedor),
+    id_equivalencia: equivalenciaValue,
+    imagen_url: formData.imagen_url?.trim() || '',
+    texto: formData.texto?.trim() || '',
+    eliminado: false,
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      const payload = toBackendPayload(formData);
-      console.log('Payload enviado:', payload);
+  try {
+    const response = await repuestosApi.create(payload);
+    console.log('Repuesto creado:', response.data);
+  } catch (error: any) {
+    console.error('Error saving repuesto:', error.response?.data || error.message);
+  }
+};
 
-      if (editingRepuesto) {
-        await repuestosApi.update(editingRepuesto.id_repuesto, payload as any);
-      } else {
-        await repuestosApi.create(payload as any);
-      }
-
-      await fetchData();
-      closeModal();
-    } catch (error: any) {
-      console.error('Error saving repuesto:', error?.response?.data || error);
-      alert(
-        error?.response?.data?.message ||
-        'No se pudo guardar el repuesto. Verifica los campos y vuelve a intentar.'
-      );
-    }
-  };
 
   const handleDelete = async (id: number) => {
     if (window.confirm('¿Está seguro de eliminar este repuesto?')) {
       try {
         const repuesto = repuestos.find(r => r.id_repuesto === id);
         if (!repuesto) return;
-
         await repuestosApi.update(id, { ...repuesto, eliminado: true } as any);
         fetchData();
       } catch (error) {
@@ -128,10 +118,10 @@ const Repuestos: React.FC = () => {
         anio: repuesto.anio,
         motor: repuesto.motor,
         id_proveedor: repuesto.id_proveedor,
-        id_equivalencia: repuesto.id_equivalencia ?? null,
+        id_equivalencia: repuesto.id_equivalencia,
         precio: repuesto.precio,
-        imagen_url: repuesto.imagen_url,
-        texto: repuesto.texto,
+        imagen_url: repuesto.imagen_url || '',
+        texto: repuesto.texto || '',
       });
     } else {
       setEditingRepuesto(null);
@@ -143,7 +133,7 @@ const Repuestos: React.FC = () => {
         anio: new Date().getFullYear(),
         motor: '',
         id_proveedor: 0,
-        id_equivalencia: null,
+        id_equivalencia: 0,
         precio: 0,
         imagen_url: '',
         texto: '',
@@ -208,6 +198,8 @@ const Repuestos: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredRepuestos.map(repuesto => {
           const proveedor = proveedores.find(p => p.id_proveedor === repuesto.id_proveedor);
+          const equivalencia = equivalencias.find(eq => eq.id_equivalencia === repuesto.id_equivalencia);
+
           return (
             <div key={repuesto.id_repuesto} className="bg-white rounded-lg border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
               <div className="h-48 bg-slate-100 relative">
@@ -219,11 +211,9 @@ const Repuestos: React.FC = () => {
                   </div>
                 )}
               </div>
-
               <div className="p-4">
                 <h3 className="font-semibold text-slate-900 text-lg">{repuesto.marca_auto} {repuesto.modelo_auto}</h3>
                 <p className="text-sm text-slate-600">{repuesto.anio} - {repuesto.motor}</p>
-
                 <div className="space-y-2 my-2">
                   <div className="flex justify-between text-sm">
                     <span className="text-slate-600">Código OEM:</span>
@@ -237,12 +227,15 @@ const Repuestos: React.FC = () => {
                     <span className="text-slate-600">Proveedor:</span>
                     <span className="text-slate-900">{proveedor?.nombre || 'N/A'}</span>
                   </div>
-                  <div className="flex justify-between items-center">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-600">Equivalencia:</span>
+                    <span className="text-slate-900 font-mono text-xs">{equivalencia?.codigo_OEM_equivalente || 'N/A'}</span>
+                  </div>
+                  <div className="flex justify-between items-center pt-2 border-t border-slate-100">
                     <span className="text-slate-600 text-sm">Precio:</span>
                     <span className="text-xl font-bold text-blue-600">${repuesto.precio.toLocaleString()}</span>
                   </div>
                 </div>
-
                 <div className="flex space-x-2 mt-2">
                   <Button variant="secondary" size="sm" onClick={() => openViewModal(repuesto)} className="flex-1">
                     <Eye className="w-4 h-4 mr-2" /> Ver
@@ -260,46 +253,109 @@ const Repuestos: React.FC = () => {
         })}
       </div>
 
-      {filteredRepuestos.length === 0 && (
+      {filteredRepuestos.length === 0 && !loading && (
         <div className="text-center py-12">
           <Package className="w-16 h-16 text-slate-400 mx-auto mb-4" />
           <div className="text-slate-400 text-lg mb-2">No se encontraron repuestos</div>
-          <p className="text-slate-500">Intenta ajustar tu búsqueda o agrega un nuevo repuesto</p>
+          <p className="text-slate-500">{searchTerm ? 'Intenta ajustar tu búsqueda' : 'Agrega tu primer repuesto'}</p>
         </div>
       )}
 
       {/* Modal Crear/Editar */}
       <Modal isOpen={isModalOpen} onClose={closeModal} title={editingRepuesto ? 'Editar Repuesto' : 'Nuevo Repuesto'} maxWidth="max-w-2xl">
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <input type="text" placeholder="Marca Auto" required value={formData.marca_auto} onChange={e => setFormData({ ...formData, marca_auto: e.target.value })} className="border p-2 rounded w-full" />
-            <input type="text" placeholder="Modelo Auto" required value={formData.modelo_auto} onChange={e => setFormData({ ...formData, modelo_auto: e.target.value })} className="border p-2 rounded w-full" />
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <input type="text" placeholder="Código OEM Original" required value={formData.codigo_OEM_original} onChange={e => setFormData({ ...formData, codigo_OEM_original: e.target.value })} className="border p-2 rounded w-full" />
-            <input type="text" placeholder="Marca OEM" required value={formData.marca_OEM} onChange={e => setFormData({ ...formData, marca_OEM: e.target.value })} className="border p-2 rounded w-full" />
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <input type="number" placeholder="Año" required value={formData.anio} onChange={e => setFormData({ ...formData, anio: Number(e.target.value) })} className="border p-2 rounded w-full" />
-            <input type="text" placeholder="Motor" required value={formData.motor} onChange={e => setFormData({ ...formData, motor: e.target.value })} className="border p-2 rounded w-full" />
-            <input type="number" placeholder="Precio" required value={formData.precio} onChange={e => setFormData({ ...formData, precio: Number(e.target.value) })} className="border p-2 rounded w-full" />
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <select required value={formData.id_proveedor} onChange={e => setFormData({ ...formData, id_proveedor: Number(e.target.value) })} className="border p-2 rounded w-full">
-              <option value={0}>Seleccionar proveedor</option>
-              {proveedores.map(p => <option key={p.id_proveedor} value={p.id_proveedor}>{p.nombre}</option>)}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <input
+              name="marca_auto"
+              value={formData.marca_auto}
+              onChange={e => setFormData({ ...formData, marca_auto: e.target.value })}
+              placeholder="Marca del Auto"
+              className="border p-2 rounded w-full"
+            />
+            <input
+              name="modelo_auto"
+              value={formData.modelo_auto}
+              onChange={e => setFormData({ ...formData, modelo_auto: e.target.value })}
+              placeholder="Modelo del Auto"
+              className="border p-2 rounded w-full"
+            />
+            <input
+              name="codigo_OEM_original"
+              value={formData.codigo_OEM_original}
+              onChange={e => setFormData({ ...formData, codigo_OEM_original: e.target.value })}
+              placeholder="Código OEM Original"
+              className="border p-2 rounded w-full"
+            />
+            <input
+              name="marca_OEM"
+              value={formData.marca_OEM}
+              onChange={e => setFormData({ ...formData, marca_OEM: e.target.value })}
+              placeholder="Marca OEM"
+              className="border p-2 rounded w-full"
+            />
+            <input
+              type="number"
+              name="anio"
+              value={formData.anio}
+              onChange={e => setFormData({ ...formData, anio: Number(e.target.value) })}
+              placeholder="Año"
+              className="border p-2 rounded w-full"
+            />
+            <input
+              name="motor"
+              value={formData.motor}
+              onChange={e => setFormData({ ...formData, motor: e.target.value })}
+              placeholder="Motor"
+              className="border p-2 rounded w-full"
+            />
+            <select
+              name="id_proveedor"
+              value={formData.id_proveedor}
+              onChange={e => setFormData({ ...formData, id_proveedor: Number(e.target.value) })}
+              className="border p-2 rounded w-full"
+            >
+              <option value={0}>Selecciona un proveedor</option>
+              {proveedores.map(p => (
+                <option key={p.id_proveedor} value={p.id_proveedor}>{p.nombre}</option>
+              ))}
             </select>
-            <select value={formData.id_equivalencia ?? ''} onChange={e => setFormData({ ...formData, id_equivalencia: e.target.value ? Number(e.target.value) : null })} className="border p-2 rounded w-full">
-              <option value="">Sin equivalencia</option>
-              {equivalencias.map(eq => <option key={eq.id_equivalencia} value={eq.id_equivalencia}>{eq.codigo_OEM_original} → {eq.codigo_OEM_equivalente}</option>)}
+            <select
+              name="id_equivalencia"
+              value={formData.id_equivalencia}
+              onChange={e => setFormData({ ...formData, id_equivalencia: Number(e.target.value) })}
+              className="border p-2 rounded w-full"
+            >
+              <option value={0}>Selecciona una equivalencia</option>
+              {equivalencias.map(eq => (
+                <option key={eq.id_equivalencia} value={eq.id_equivalencia}>{eq.codigo_OEM_equivalente}</option>
+              ))}
             </select>
+            <input
+              type="number"
+              name="precio"
+              value={formData.precio}
+              onChange={e => setFormData({ ...formData, precio: Number(e.target.value) })}
+              placeholder="Precio"
+              className="border p-2 rounded w-full"
+            />
+            <input
+              name="imagen_url"
+              value={formData.imagen_url}
+              onChange={e => setFormData({ ...formData, imagen_url: e.target.value })}
+              placeholder="URL de la Imagen"
+              className="border p-2 rounded w-full"
+            />
+            <input
+              name="texto"
+              value={formData.texto}
+              onChange={e => setFormData({ ...formData, texto: e.target.value })}
+              placeholder="Descripción"
+              className="border p-2 rounded w-full col-span-1 md:col-span-2"
+            />
           </div>
-          <input type="text" placeholder="URL Imagen" value={formData.imagen_url} onChange={e => setFormData({ ...formData, imagen_url: e.target.value })} className="border p-2 rounded w-full" />
-          <textarea placeholder="Descripción" value={formData.texto} onChange={e => setFormData({ ...formData, texto: e.target.value })} className="border p-2 rounded w-full" rows={3} />
-
-          <div className="flex justify-end space-x-2 mt-4">
+          <div className="flex justify-end gap-2 mt-4">
             <Button type="button" variant="secondary" onClick={closeModal}>Cancelar</Button>
-            <Button type="submit">{editingRepuesto ? 'Actualizar' : 'Crear'}</Button>
+            <Button type="submit">{editingRepuesto ? 'Actualizar' : 'Guardar'}</Button>
           </div>
         </form>
       </Modal>
@@ -314,11 +370,11 @@ const Repuestos: React.FC = () => {
             <p><strong>Marca OEM:</strong> {viewingRepuesto.marca_OEM}</p>
             <p><strong>Año:</strong> {viewingRepuesto.anio}</p>
             <p><strong>Motor:</strong> {viewingRepuesto.motor}</p>
-            <p><strong>Precio:</strong> ${viewingRepuesto.precio.toLocaleString()}</p>
-            <p><strong>Proveedor:</strong> {proveedores.find(p => p.id_proveedor === viewingRepuesto.id_proveedor)?.nombre}</p>
+            <p><strong>Proveedor:</strong> {proveedores.find(p => p.id_proveedor === viewingRepuesto.id_proveedor)?.nombre || 'N/A'}</p>
             <p><strong>Equivalencia:</strong> {equivalencias.find(eq => eq.id_equivalencia === viewingRepuesto.id_equivalencia)?.codigo_OEM_equivalente || 'N/A'}</p>
-            <p><strong>Descripción:</strong> {viewingRepuesto.texto}</p>
-            {viewingRepuesto.imagen_url && <img src={viewingRepuesto.imagen_url} alt="Imagen" className="w-full h-48 object-cover mt-2 rounded" />}
+            <p><strong>Precio:</strong> ${viewingRepuesto.precio.toLocaleString()}</p>
+            {viewingRepuesto.imagen_url && <img src={viewingRepuesto.imagen_url} alt="Imagen repuesto" className="w-full mt-2 rounded" />}
+            {viewingRepuesto.texto && <p className="mt-2">{viewingRepuesto.texto}</p>}
           </div>
         )}
       </Modal>
