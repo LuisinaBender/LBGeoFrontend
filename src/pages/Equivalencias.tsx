@@ -33,22 +33,33 @@ const Equivalencias: React.FC = () => {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+const handleSubmit = async (e: React.FormEvent) => {
   e.preventDefault();
-  if (!editingEquivalencia) return;
 
   try {
-    const payload = {
-      ...editingEquivalencia, // trae todos los campos existentes
-      codigo_OEM_original: formData.codigo_OEM_original,
-      codigo_OEM_equivalente: formData.codigo_OEM_equivalente,
-      eliminado: false
-    };
-    await equivalenciasApi.update(editingEquivalencia.id_equivalencia, payload);
+    if (editingEquivalencia) {
+      // 🔹 Editar equivalencia existente
+      const payload = {
+        ...editingEquivalencia,
+        codigo_OEM_original: formData.codigo_OEM_original,
+        codigo_OEM_equivalente: formData.codigo_OEM_equivalente,
+        eliminado: false
+      };
+      await equivalenciasApi.update(editingEquivalencia.id_equivalencia, payload);
+    } else {
+      // 🔹 Crear nueva equivalencia
+      const payload = {
+        codigo_OEM_original: formData.codigo_OEM_original,
+        codigo_OEM_equivalente: formData.codigo_OEM_equivalente,
+        eliminado: false
+      };
+      await equivalenciasApi.create(payload);
+    }
+
     fetchEquivalencias();
     closeModal();
   } catch (error) {
-    console.error('Error saving equivalencia:', error);
+    console.error('Error guardando equivalencia:', error);
   }
 };
 

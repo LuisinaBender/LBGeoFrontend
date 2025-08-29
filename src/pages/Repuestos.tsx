@@ -23,8 +23,8 @@ const Repuestos: React.FC = () => {
     marca_OEM: '',
     anio: new Date().getFullYear(),
     motor: '',
-    id_proveedor: 0,              // número
-    id_equivalencia: null as number | null, // número o null
+    id_proveedor: 0,
+    id_equivalencia: null as number | null,
     precio: 0,
     imagen_url: '',
     texto: '',
@@ -53,37 +53,55 @@ const Repuestos: React.FC = () => {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  try {
-    const payload = {
-      marca_auto: formData.marca_auto,
-      modelo_auto: formData.modelo_auto,
-      codigo_OEM_original: formData.codigo_OEM_original, // corregido
-      marca_OEM: formData.marca_OEM,
-      anio: Number(formData.anio),
-      motor: formData.motor,
-      precio: Number(formData.precio),
-      id_proveedor: Number(formData.id_proveedor),
-      id_equivalencia: formData.id_equivalencia ? Number(formData.id_equivalencia) : null,
-      imagen_url: formData.imagen_url || null,
-      texto: formData.texto || null,
-      eliminado: false,
+  /** 🔄 Mapea el formulario (snake_case) al DTO esperado por el backend (PascalCase) y omite opcionales vacíos */
+  const toBackendPayload = (fd: typeof formData): any => {
+    const base: any = {
+      MarcaAuto: fd.marca_auto,
+      ModeloAuto: fd.modelo_auto,
+      CodigoOEMOriginal: fd.codigo_OEM_original,
+      MarcaOEM: fd.marca_OEM,
+      Anio: Number(fd.anio),
+      Motor: fd.motor,
+      Precio: Number(fd.precio),
+      IdProveedor: Number(fd.id_proveedor),
+      Eliminado: false,
     };
 
-    if (editingRepuesto) {
-      await repuestosApi.update(editingRepuesto.id_repuesto, payload);
-    } else {
-      await repuestosApi.create(payload);
+    if (fd.id_equivalencia !== null && fd.id_equivalencia !== undefined) {
+      base.IdEquivalencia = Number(fd.id_equivalencia);
+    }
+    if (fd.imagen_url && fd.imagen_url.trim() !== '') {
+      base.ImagenUrl = fd.imagen_url.trim();
+    }
+    if (fd.texto && fd.texto.trim() !== '') {
+      base.Texto = fd.texto.trim();
     }
 
-    fetchData();
-    closeModal();
-  } catch (error) {
-    console.error('Error saving repuesto:', error);
-    alert('No se pudo guardar el repuesto. Verifica los campos y vuelve a intentar.');
-  }
-};
+    return base;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const payload = toBackendPayload(formData);
+      console.log('Payload enviado:', payload);
+
+      if (editingRepuesto) {
+        await repuestosApi.update(editingRepuesto.id_repuesto, payload as any);
+      } else {
+        await repuestosApi.create(payload as any);
+      }
+
+      await fetchData();
+      closeModal();
+    } catch (error: any) {
+      console.error('Error saving repuesto:', error?.response?.data || error);
+      alert(
+        error?.response?.data?.message ||
+        'No se pudo guardar el repuesto. Verifica los campos y vuelve a intentar.'
+      );
+    }
+  };
 
   const handleDelete = async (id: number) => {
     if (window.confirm('¿Está seguro de eliminar este repuesto?')) {
@@ -91,7 +109,7 @@ const Repuestos: React.FC = () => {
         const repuesto = repuestos.find(r => r.id_repuesto === id);
         if (!repuesto) return;
 
-        await repuestosApi.update(id, { ...repuesto, eliminado: true });
+        await repuestosApi.update(id, { ...repuesto, eliminado: true } as any);
         fetchData();
       } catch (error) {
         console.error('Error deleting repuesto:', error);
