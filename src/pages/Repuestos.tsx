@@ -65,11 +65,46 @@ const handleSubmit = async (event: React.FormEvent) => {
   }
 
 
-  // Equivalencia: siempre enviar un número (0 si no se selecciona ninguna)
+  // Equivalencia: enviar null si no se selecciona ninguna
   const equivalenciaValue = formData.id_equivalencia && Number(formData.id_equivalencia) !== 0
     ? Number(formData.id_equivalencia)
-    : 0;
+    : null;
 
+
+  // Si estamos editando, realizar actualización
+  if (editingRepuesto) {
+    // Equivalencia: enviar null si no se selecciona ninguna
+    const equivalenciaValue = formData.id_equivalencia && Number(formData.id_equivalencia) !== 0
+      ? Number(formData.id_equivalencia)
+      : null;
+
+    const payload = {
+      id_repuesto: editingRepuesto.id_repuesto,
+      marca_auto: formData.marca_auto.trim(),
+      modelo_auto: formData.modelo_auto.trim(),
+      codigo_OEM_original: formData.codigo_OEM_original.trim(),
+      marca_OEM: formData.marca_OEM.trim(),
+      anio: Number(formData.anio),
+      motor: formData.motor.trim(),
+      precio: Number(formData.precio),
+      id_proveedor: Number(formData.id_proveedor),
+      id_equivalencia: equivalenciaValue,
+      imagen_url: formData.imagen_url?.trim() ? formData.imagen_url.trim() : null,
+      texto: formData.texto?.trim() ? formData.texto.trim() : null,
+      eliminado: editingRepuesto.eliminado,
+    } as any;
+
+    try {
+      await repuestosApi.update(editingRepuesto.id_repuesto, payload);
+      fetchData();
+      closeModal();
+    } catch (error: any) {
+      console.error('Error actualizando repuesto:', error.response?.data || error.message);
+    }
+    return;
+  }
+
+  // CREACIÓN: solo los campos requeridos y con tipos correctos
   const payload = {
     marca_auto: formData.marca_auto.trim(),
     modelo_auto: formData.modelo_auto.trim(),
@@ -80,13 +115,15 @@ const handleSubmit = async (event: React.FormEvent) => {
     precio: Number(formData.precio),
     id_proveedor: Number(formData.id_proveedor),
     id_equivalencia: equivalenciaValue,
-    imagen_url: formData.imagen_url?.trim() || '',
-    texto: formData.texto?.trim() || '',
+    imagen_url: formData.imagen_url?.trim() ? formData.imagen_url.trim() : null,
+    texto: formData.texto?.trim() ? formData.texto.trim() : null,
     eliminado: false,
   };
 
+  fetchData();
+  closeModal();
   try {
-    const response = await repuestosApi.create(payload);
+  const response = await repuestosApi.create(payload as any);
     console.log('Repuesto creado:', response.data);
   } catch (error: any) {
     console.error('Error saving repuesto:', error.response?.data || error.message);
