@@ -31,6 +31,7 @@ export interface Repuesto {
   precio: number;
   imagen_url: string;
   texto: string;
+  stock: number;
   eliminado: boolean;
   proveedor?: Proveedor;
 }
@@ -60,9 +61,11 @@ export interface RegistroVenta {
   precio_total: number;
   fecha_venta: string;
   eliminado: boolean;
-  cliente?: Cliente;
-  repuesto?: Repuesto;
+  cliente?: Partial<Cliente>;
+  repuesto?: Partial<Repuesto>;
 }
+
+export type TipoAct = 'Entrada' | 'Salida';
 
 export interface Registro {
   id_registro: number;
@@ -71,5 +74,6 @@ export interface Registro {
   cantidad: number;
   precio_unitario: number;
   precio_total: number;
+  tipo_act: TipoAct;
   eliminado: boolean;
 }

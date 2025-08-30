@@ -249,8 +249,8 @@ const handleSubmit = async (event: React.FormEvent) => {
                 )}
               </div>
               <div className="p-4">
-                <h3 className="font-semibold text-slate-900 text-lg">{repuesto.marca_auto} {repuesto.modelo_auto}</h3>
-                <p className="text-sm text-slate-600">{repuesto.anio} - {repuesto.motor}</p>
+                <h3 className="font-bold text-blue-700 text-xl truncate" title={repuesto.texto}>{repuesto.texto}</h3>
+                <p className="text-sm text-slate-600">{repuesto.marca_auto} {repuesto.modelo_auto} | {repuesto.anio} - {repuesto.motor}</p>
                 <div className="space-y-2 my-2">
                   <div className="flex justify-between text-sm">
                     <span className="text-slate-600">Código OEM:</span>
@@ -411,7 +411,7 @@ const handleSubmit = async (event: React.FormEvent) => {
             <p><strong>Equivalencia:</strong> {equivalencias.find(eq => eq.id_equivalencia === viewingRepuesto.id_equivalencia)?.codigo_OEM_equivalente || 'N/A'}</p>
             <p><strong>Precio:</strong> ${viewingRepuesto.precio.toLocaleString()}</p>
             {viewingRepuesto.imagen_url && <img src={viewingRepuesto.imagen_url} alt="Imagen repuesto" className="w-full mt-2 rounded" />}
-            {viewingRepuesto.texto && <p className="mt-2">{viewingRepuesto.texto}</p>}
+            {viewingRepuesto.texto && <p className="mt-2 text-lg font-bold text-blue-700">{viewingRepuesto.texto}</p>}
           </div>
         )}
       </Modal>

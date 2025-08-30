@@ -21,6 +21,7 @@ const Ventas: React.FC = () => {
     precio_unitario: 0,
     fecha_venta: new Date().toISOString().split('T')[0],
   });
+  const [formError, setFormError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -46,24 +47,60 @@ const Ventas: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFormError(null);
+    // Validación de campos obligatorios
+    if (
+      !formData.id_repuesto ||
+      !formData.id_cliente ||
+      Number(formData.id_repuesto) === 0 ||
+      Number(formData.id_cliente) === 0 ||
+      !formData.cantidad ||
+      !formData.precio_unitario ||
+      !formData.fecha_venta
+    ) {
+      setFormError('Por favor, complete todos los campos obligatorios correctamente.');
+      return;
+    }
     try {
       const precio_total = formData.cantidad * formData.precio_unitario;
+      // Asegurar formato ISO completo para fecha_venta
+      let fechaISO = formData.fecha_venta;
+      if (/^\d{4}-\d{2}-\d{2}$/.test(fechaISO)) {
+        fechaISO = fechaISO + 'T00:00:00';
+      }
+
+      // Buscar el objeto cliente y repuesto completos
       const data = {
-        ...formData,
         id_repuesto: Number(formData.id_repuesto),
         id_cliente: Number(formData.id_cliente),
+        cantidad: formData.cantidad,
+        precio_unitario: formData.precio_unitario,
         precio_total,
+        fecha_venta: fechaISO,
+        eliminado: false
       };
+      // Solo enviar los campos básicos, sin cliente ni repuesto
+      console.log('Venta enviada:', data);
 
       if (editingVenta) {
-        await registrosVentaApi.update(editingVenta.id_registro_venta, data);
+        await registrosVentaApi.update(editingVenta.id_registro_venta, {
+          ...data,
+          id_registro_venta: editingVenta.id_registro_venta
+        });
       } else {
-        await registrosVentaApi.create({ ...data, eliminado: false });
+        await registrosVentaApi.create(data);
       }
-      
+
       fetchData();
       closeModal();
-    } catch (error) {
+    } catch (error: any) {
+      let backendMsg = '';
+      if (error.response && error.response.data) {
+        backendMsg = typeof error.response.data === 'string'
+          ? error.response.data
+          : JSON.stringify(error.response.data);
+      }
+      setFormError('Error al guardar la venta. ' + (backendMsg ? 'Detalle: ' + backendMsg : 'Revise los datos e intente nuevamente.'));
       console.error('Error saving venta:', error);
     }
   };
@@ -71,8 +108,12 @@ const Ventas: React.FC = () => {
   const handleDelete = async (id: number) => {
     if (window.confirm('¿Está seguro de eliminar esta venta?')) {
       try {
-        await registrosVentaApi.delete(id);
-        fetchData();
+        // Borrado lógico: marcar eliminado en true
+        const venta = ventas.find(v => v.id_registro_venta === id);
+        if (venta) {
+          await registrosVentaApi.update(id, { ...venta, eliminado: true });
+          fetchData();
+        }
       } catch (error) {
         console.error('Error deleting venta:', error);
       }
@@ -264,6 +305,9 @@ const Ventas: React.FC = () => {
         maxWidth="max-w-lg"
       >
         <form onSubmit={handleSubmit} className="space-y-4">
+          {formError && (
+            <div className="text-red-600 text-sm mb-2">{formError}</div>
+          )}
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">
               Cliente *

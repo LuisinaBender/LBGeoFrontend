@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit, Trash2, Search, FileText, Calendar } from 'lucide-react';
 import { registrosApi, registrosVentaApi, repuestosApi } from '../services/api';
-import type { Registro, RegistroVenta, Repuesto } from '../types';
+import type { Registro, RegistroVenta, Repuesto, TipoAct } from '../types';
 import Modal from '../components/UI/Modal';
 import Button from '../components/UI/Button';
 import LoadingSpinner from '../components/UI/LoadingSpinner';
@@ -19,6 +19,7 @@ const Registros: React.FC = () => {
     id_repuesto: '',
     cantidad: 1,
     precio_unitario: 0,
+    tipo_act: 'Entrada' as TipoAct,
   });
 
   useEffect(() => {
@@ -44,35 +45,34 @@ const Registros: React.FC = () => {
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  try {
-    const data = {
-      texto: formData.texto,
-      marca_auto: formData.marca_auto,
-      modelo_auto: formData.modelo_auto,
-      codigo_OEM_Original: formData.codigo_OEM_Original,
-      marca_OEM: formData.marca_OEM,
-      anio: Number(formData.anio),
-      motor: formData.motor,
-      imagen_url: formData.imagen_url,
-      id_proveedor: Number(formData.id_proveedor),
-      id_equivalencia: Number(formData.id_equivalencia),
-      precio: Number(formData.precio),
-      eliminado: false, // nuevo repuesto siempre false
-    };
-
-    if (editingRepuesto) {
-      await repuestosApi.update(editingRepuesto.id_repuesto, data);
-    } else {
-      await repuestosApi.create(data);
+    e.preventDefault();
+    try {
+      // Validar stock si es salida
+      const repuesto = repuestos.find(r => r.id_repuesto === Number(formData.id_repuesto));
+      if (formData.tipo_act === 'Salida' && repuesto && formData.cantidad > repuesto.stock) {
+        alert(`No hay suficiente stock. Stock disponible: ${repuesto.stock}`);
+        return;
+      }
+      const data = {
+        id_registro_venta: Number(formData.id_registro_venta),
+        id_repuesto: Number(formData.id_repuesto),
+        cantidad: Number(formData.cantidad),
+        precio_unitario: Number(formData.precio_unitario),
+        precio_total: Number(formData.cantidad) * Number(formData.precio_unitario),
+        tipo_act: formData.tipo_act,
+        eliminado: false,
+      };
+      if (editingRegistro) {
+        await registrosApi.update(editingRegistro.id_registro, data);
+      } else {
+        await registrosApi.create(data);
+      }
+      fetchData();
+      closeModal();
+    } catch (error) {
+      console.error('Error guardando registro:', error);
     }
-
-    fetchData();
-    closeModal();
-  } catch (error) {
-    console.error('Error saving repuesto:', error);
-  }
-};
+  };
 
   const handleDeleteRegistro = async (id: number) => {
     if (window.confirm('¿Está seguro de eliminar este registro?')) {
@@ -108,6 +108,7 @@ const Registros: React.FC = () => {
         id_repuesto: registro.id_repuesto.toString(),
         cantidad: registro.cantidad,
         precio_unitario: registro.precio_unitario,
+        tipo_act: registro.tipo_act,
       });
     } else {
       setEditingRegistro(null);
@@ -116,6 +117,7 @@ const Registros: React.FC = () => {
         id_repuesto: '',
         cantidad: 1,
         precio_unitario: 0,
+        tipo_act: 'Entrada',
       });
     }
     setIsModalOpen(true);
@@ -341,6 +343,21 @@ const Registros: React.FC = () => {
                   {repuesto.marca_auto} {repuesto.modelo_auto} - {repuesto.codigo_OEM_original} (${repuesto.precio.toLocaleString()})
                 </option>
               ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              Tipo de Movimiento *
+            </label>
+            <select
+              value={formData.tipo_act}
+              onChange={e => setFormData({ ...formData, tipo_act: e.target.value as TipoAct })}
+              className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              required
+            >
+              <option value="Entrada">Entrada</option>
+              <option value="Salida">Salida</option>
             </select>
           </div>
 
